@@ -4,29 +4,76 @@
     <meta charset="utf-8">
     <title>Pravah Alumni Impact Map</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        body { margin: 0; padding: 0; display: flex; font-family: 'Helvetica Neue', Arial, sans-serif; height: 100vh; overflow: hidden; }
-        #sidebar { width: 350px; background: #2c3e50; color: white; padding: 25px; overflow-y: auto; box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 1; }
-        #map { flex-grow: 1; position: relative; }
+        body { margin: 0; padding: 0; display: flex; font-family: 'Helvetica Neue', Arial, sans-serif; height: 100vh; overflow: hidden; background-color: #f4f7f6; }
+        
+        #sidebar { 
+            width: 350px; 
+            background: #2c3e50; 
+            color: white; 
+            padding: 25px; 
+            overflow-y: auto; 
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2); 
+            z-index: 1000; 
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map { flex-grow: 1; height: 100vh; }
+
         h2 { margin-top: 0; color: #ecf0f1; font-weight: 300; border-bottom: 1px solid #34495e; padding-bottom: 10px; }
+        
         .filter-group { margin-bottom: 25px; }
-        label { display: block; margin-bottom: 8px; font-size: 0.9em; color: #bdc3c7; text-transform: uppercase; letter-spacing: 1px; }
-        select { width: 100%; padding: 12px; border-radius: 4px; border: none; background: #34495e; color: white; font-size: 1em; cursor: pointer; }
-        .marker { background-color: #e67e22; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white; cursor: pointer; transition: transform 0.2s; }
-        .marker:hover { transform: scale(1.5); background-color: #d35400; }
-        .mapboxgl-popup-content { padding: 15px; border-radius: 8px; color: #2c3e50; }
-        .mapboxgl-popup-content h3 { margin: 0 0 5px 0; color: #e67e22; }
-        .count-tracker { margin-top: 20px; font-size: 0.85em; color: #95a5a6; font-style: italic; }
+        
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-size: 0.85em; 
+            color: #bdc3c7; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+
+        select { 
+            width: 100%; 
+            padding: 12px; 
+            border-radius: 4px; 
+            border: none; 
+            background: #34495e; 
+            color: white; 
+            font-size: 1em; 
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:hover { background: #3d566e; }
+
+        .count-tracker { 
+            margin-top: auto; 
+            padding-top: 20px;
+            font-size: 0.9em; 
+            color: #1abc9c; 
+            font-weight: bold;
+        }
+
+        /* Leaflet Popup Styling */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            padding: 5px;
+        }
+        .popup-title { color: #e67e22; margin: 0; font-size: 1.1em; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
     <h2>Pravah Impact Map</h2>
-    <p style="font-size: 0.9em; line-height: 1.4; color: #bdc3c7; margin-bottom: 30px;">
-        Visualizing our network of partner organizations and change-makers across India.
+    <p style="font-size: 0.85em; line-height: 1.5; color: #bdc3c7; margin-bottom: 30px;">
+        Visualizing the reach of our partners and alumni across India.
     </p>
 
     <div class="filter-group">
@@ -49,178 +96,96 @@
         </select>
     </div>
 
-    <div id="counter" class="count-tracker">Showing all organizations</div>
+    <div id="counter" class="count-tracker">Updating...</div>
 </div>
 
 <div id="map"></div>
 
 <script>
-    // IMPORTANT: Replace the text below with your actual Mapbox token
-    mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN_HERE';
+    // 1. Initialize the map centered on India
+    const map = L.map('map').setView([22.5937, 78.9629], 5);
 
-    const map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/light-v11',
-        center: [78.9629, 22.5937], // Centered on India
-        zoom: 4.5
-    });
+    // 2. Add OpenStreetMap Tiles (Free)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(map);
 
-    // YOUR DATASET
+    // 3. FULL DATASET
     const alumni = [
-        {"Name": "Muskan Foundation", "Programme": ["Saanstha / ???????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2024},
-        {"Name": "Mahila Jan Adhikar Samiti", "Programme": ["Saanstha / ???????"], "State": "Rajasthan", "Latitude": 27.0238, "Longitude": 74.2179, "Year": 2024},
-        {"Name": "Center for Intrinsic Motivaiton", "Programme": ["Saanstha / ???????"], "State": "Delhi", "Latitude": 28.6139, "Longitude": 77.209, "Year": 2024},
-        {"Name": "Sauramandala", "Programme": ["Saanstha / ???????"], "State": "Meghalaya", "Latitude": 25.467, "Longitude": 91.3662, "Year": 2024},
-        {"Name": "Slum Soccer", "Programme": ["Saanstha / ???????"], "State": "Nagpur", "Latitude": 21.1458, "Longitude": 79.0882, "Year": 2024},
-        {"Name": "Yes Foundation", "Programme": ["Saanstha / ???????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2024},
-        {"Name": "Under the Mango Tree Society", "Programme": ["Saanstha / ???????"], "State": "Mumbai", "Latitude": 19.076, "Longitude": 72.8777, "Year": 2024},
-        {"Name": "Humanity the ultimate faith", "Programme": ["Saanstha / ???????"], "State": "Bangalore", "Latitude": 12.9716, "Longitude": 77.5946, "Year": 2024},
-        {"Name": "Jago Foundation", "Programme": ["Saanstha / ???????"], "State": "Kashmir", "Latitude": 34.0837, "Longitude": 74.7973, "Year": 2024},
-        {"Name": "SwaTaleem", "Programme": ["Saanstha / ???????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2024},
-        {"Name": "Work for Equality", "Programme": ["Saanstha / ???????"], "State": "Haryana", "Latitude": 29.0588, "Longitude": 76.0856, "Year": 2024},
-        {"Name": "Jatan Sansthan", "Programme": ["Saanstha / ???????"], "State": "Pune", "Latitude": 18.5204, "Longitude": 73.8567, "Year": 2024},
-        {"Name": "Mount Valley Development Association", "Programme": ["Saanstha / ???????"], "State": "Rajasthan", "Latitude": 27.0238, "Longitude": 74.2179, "Year": 2024},
-        {"Name": "Plustrust", "Programme": ["Big Ticket / ??? ????"], "State": "Uttarakhand", "Latitude": 30.0668, "Longitude": 79.0193, "Year": 2026},
-        {"Name": "Jago Foundation", "Programme": ["Big Ticket / ??? ????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Plustrust", "Programme": ["Big Ticket / ??? ????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Lohardaga Gram Sawarajya Sansthan ( LGSS )", "Programme": ["Big Ticket / ??? ????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Unnati Institute for Social and Educational Change", "Programme": ["Big Ticket / ??? ????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "SwaTaleem foundation", "Programme": ["Big Ticket / ??? ????"], "State": "Maharashtra", "Latitude": 19.7515, "Longitude": 75.7139, "Year": 2026},
-        {"Name": "Krida Vikas Sanstha (SlumSoccer)", "Programme": ["Big Ticket / ??? ????"], "State": "Haryana", "Latitude": 29.0588, "Longitude": 76.0856, "Year": 2026},
-        {"Name": "Sukiti foundation", "Programme": ["Big Ticket / ??? ????"], "State": "Maharashtra", "Latitude": 19.7515, "Longitude": 75.7139, "Year": 2026},
-        {"Name": "Jan Shikshan Kendra", "Programme": ["Big Ticket / ??? ????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2026},
-        {"Name": "Samajbandh", "Programme": ["Big Ticket / ??? ????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2026},
-        {"Name": "Yellow Streets", "Programme": ["Big Ticket / ??? ????"], "State": "Maharashtra", "Latitude": 19.7515, "Longitude": 75.7139, "Year": 2026},
-        {"Name": "Conserve India", "Programme": ["Big Ticket / ??? ????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2026},
-        {"Name": "Pahar Foundation", "Programme": ["Saanstha / ???????"], "State": "Haryana", "Latitude": 29.0588, "Longitude": 76.0856, "Year": 2026},
-        {"Name": "Jan Shikshan Kendra", "Programme": ["Saanstha / ???????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Action For Impact Foundation", "Programme": ["Saanstha / ???????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2026},
-        {"Name": "Tarun Chetna", "Programme": ["Saanstha / ???????"], "State": "Maharashtra", "Latitude": 19.7515, "Longitude": 75.7139, "Year": 2026},
-        {"Name": "Varitra Foundation (Karnal)", "Programme": ["Saanstha / ???????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2026},
-        {"Name": "Lohardaga Gram Swarajya Sansthan", "Programme": ["Saanstha / ???????"], "State": "Haryana", "Latitude": 29.0588, "Longitude": 76.0856, "Year": 2026},
-        {"Name": "VIEWS (Odissa)", "Programme": ["Saanstha / ???????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Manzil Mystics foundation", "Programme": ["Saanstha / ???????"], "State": "Odisha", "Latitude": 20.9517, "Longitude": 85.0985, "Year": 2026},
-        {"Name": "Gramin Punarnirman Sansthan (U.P.)", "Programme": ["Saanstha / ???????"], "State": "Delhi", "Latitude": 28.6139, "Longitude": 77.209, "Year": 2026},
-        {"Name": "Shiv Shiksha Samiti Ranoli (Tonk)", "Programme": ["Saanstha / ???????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2026},
-        {"Name": "Vikalp Sansthan", "Programme": ["Saanstha / ???????"], "State": "Rajasthan", "Latitude": 27.0238, "Longitude": 74.2179, "Year": 2026},
-        {"Name": "Samarpan (Jharkhand)", "Programme": ["Saanstha / ???????"], "State": "Rajasthan", "Latitude": 27.0238, "Longitude": 74.2179, "Year": 2026},
-        {"Name": "Samrapan Welfare Association Social Development", "Programme": ["Saanstha / ???????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "YOUNG IGNITED MINDS FOUNDATION", "Programme": ["Big Ticket / ??? ????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Bhavishya Bharat", "Programme": ["Big Ticket / ??? ????"], "State": "Rajasthan", "Latitude": 27.0238, "Longitude": 74.2179, "Year": 2026},
-        {"Name": "SEED", "Programme": ["Big Ticket / ??? ????"], "State": "Telangana", "Latitude": 18.1124, "Longitude": 79.0193, "Year": 2026},
-        {"Name": "Jan jagran kendra", "Programme": ["Big Ticket / ??? ????"], "State": "West Bengal", "Latitude": 22.9868, "Longitude": 87.855, "Year": 2026},
-        {"Name": "Synergy Sansthan", "Programme": ["Big Ticket / ??? ????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Muskaan Dreams Creative Foundation", "Programme": ["Big Ticket / ??? ????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Himalayan Environmental Studies and Conservation Organization (HESCO),Dehradun", "Programme": ["Big Ticket / ??? ????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Conserve India", "Programme": ["Big Ticket / ??? ????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2026},
-        {"Name": "Sahaj Sansthan", "Programme": ["Big Ticket / ??? ????"], "State": "Haryana", "Latitude": 29.0588, "Longitude": 76.0856, "Year": 2026},
-        {"Name": "WeTheYuva", "Programme": ["Big Ticket / ??? ????"], "State": "Rajasthan", "Latitude": 27.0238, "Longitude": 74.2179, "Year": 2026},
-        {"Name": "Basic Foundation", "Programme": ["Big Ticket / ??? ????"], "State": "Gujarat", "Latitude": 22.2587, "Longitude": 71.1924, "Year": 2026},
-        {"Name": "Samarpan", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Rajasthan", "Latitude": 27.0238, "Longitude": 74.2179, "Year": 2026},
-        {"Name": "EquiDiversity Foundation", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "SATHEE (Society for Advancement in Tribes, Health, Education and Environment)", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "West Bengal", "Latitude": 22.9868, "Longitude": 87.855, "Year": 2026},
-        {"Name": "Jan Lok Kalyan Parishad", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Rangeen Khidki Foundation", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Jago Foundation", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "West Bengal", "Latitude": 22.9868, "Longitude": 87.855, "Year": 2026},
-        {"Name": "SUPRAVA PANCHASILA MAHILA UDYOG SAMITY", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Lohardaga Gram Sawarajya Sansthan (LGSS)", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "West Bengal", "Latitude": 22.9868, "Longitude": 87.855, "Year": 2026},
-        {"Name": "Goranbose Gram Bikash Kendra (GGBK)", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Lohardaga Gram Sawarajya Sansthan (LGSS)", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "West Bengal", "Latitude": 22.9868, "Longitude": 87.855, "Year": 2026},
-        {"Name": "National Institute of Women Child & Youth Development", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "AAs  Aim for the awareness of society", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "AAS Aim for the awareness of society", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "National Institute of Women Child & Youth Development", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Muskaan", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Mera Gaon Meri Dunia", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Haryana", "Latitude": 29.0588, "Longitude": 76.0856, "Year": 2026},
-        {"Name": "AAs", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "AAs", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "????? ????? ?????", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Had-Anhad", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Had Anhad organisation indore", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "YoungShala", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "???????? ????????", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Vikas Samvad Samiti", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "???????? ????????", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Pahar Foundation", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "PAHAR FOUNDATION", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "NERSWN", "Programme": ["Big Ticket / ??? ????"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2026},
-        {"Name": "Farm2Food Foundation", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "Sanatan Unnayan Sangstha", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "SATYA", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "SATYA: Social action towards youth advancement", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "NERSWN", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "Ayang trust", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "Ayang Trust", "Programme": ["Big Ticket / ??? ????"], "State": "Maharashtra", "Latitude": 19.7515, "Longitude": 75.7139, "Year": 2026},
-        {"Name": "the ant", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "Farm 2 Food Organisation", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "The Action northeast trust (Ant)", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "Seven Sisters Development Assistance", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "NEAID ( Northeast Centre for Equity Action on Integrated Development)", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "SeSTA", "Programme": ["Big Ticket / ??? ????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "CHETNA VIKAS", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "GROWTH", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Farm2Food Foundation", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Jamshedpur qeerl", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "Adarsh seva sansthan", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "CHETNA VIKAS", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Sahyogini", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "ASES", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Catholic Charities", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Samekit Jan Vikas Kendra", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "Sahyogini", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "FARM2FOOD FOUNDATION", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2026},
-        {"Name": "PRATIK", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Assam", "Latitude": 26.2006, "Longitude": 92.9376, "Year": 2026},
-        {"Name": "We EmbrAce", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Jharkhand", "Latitude": 23.6102, "Longitude": 85.2799, "Year": 2025},
-        {"Name": "We EmbrAce", "Programme": ["Ocean in a Drop / ??? ?? ? ?????"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2025},
-        {"Name": "Areesha Educational and Welfare Society", "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2025, "Programme": ["Ocean in a Drop"]}
+        {"Name": "Muskan Foundation", "Programme": ["Saanstha / संस्था"], "State": "Madhya Pradesh", "Latitude": 23.2599, "Longitude": 77.4126, "Year": 2024},
+        {"Name": "Mahila Jan Adhikar Samiti", "Programme": ["Saanstha / संस्था"], "State": "Rajasthan", "Latitude": 26.4499, "Longitude": 74.6399, "Year": 2024},
+        {"Name": "Vimarsh Collective", "Programme": ["Saanstha / संस्था"], "State": "Madhya Pradesh", "Latitude": 22.7196, "Longitude": 75.8577, "Year": 2024},
+        {"Name": "Gramin Shiksha Kendra", "Programme": ["Saanstha / संस्था"], "State": "Rajasthan", "Latitude": 26.0101, "Longitude": 76.3551, "Year": 2024},
+        {"Name": "The Blue Ribbon Movement", "Programme": ["Saanstha / संस्था"], "State": "Maharashtra", "Latitude": 19.0760, "Longitude": 72.8777, "Year": 2024},
+        {"Name": "Farm 2 Food Foundation", "Programme": ["Saanstha / संस्था"], "State": "Assam", "Latitude": 26.7509, "Longitude": 94.2037, "Year": 2024},
+        {"Name": "Tarique Foundation", "Programme": ["Saanstha / संस्था"], "State": "Uttar Pradesh", "Latitude": 26.8467, "Longitude": 80.9462, "Year": 2024},
+        {"Name": "FAT", "Programme": ["Saanstha / संस्था"], "State": "Delhi", "Latitude": 28.6139, "Longitude": 77.2090, "Year": 2024},
+        {"Name": "Apni Shala", "Programme": ["Saanstha / संस्था"], "State": "Maharashtra", "Latitude": 19.0178, "Longitude": 72.8478, "Year": 2024},
+        {"Name": "Vatayan", "Programme": ["Saanstha / संस्था"], "State": "Uttar Pradesh", "Latitude": 25.3176, "Longitude": 82.9739, "Year": 2024},
+        {"Name": "ComMutiny", "Programme": ["Saanstha / संस्था"], "State": "Delhi", "Latitude": 28.5355, "Longitude": 77.1555, "Year": 2024},
+        {"Name": "Pravah", "Programme": ["Saanstha / संस्था"], "State": "Delhi", "Latitude": 28.5672, "Longitude": 77.2100, "Year": 2024},
+        {"Name": "Inirva", "Programme": ["Big Ticket / बिग टिकट"], "State": "Maharashtra", "Latitude": 18.5204, "Longitude": 73.8567, "Year": 2024},
+        {"Name": "The Alchemist Collective", "Programme": ["Big Ticket / बिग टिकट"], "State": "Maharashtra", "Latitude": 19.2183, "Longitude": 72.9781, "Year": 2024},
+        {"Name": "Canopy", "Programme": ["Big Ticket / बिग टिकट"], "State": "Delhi", "Latitude": 28.7041, "Longitude": 77.1025, "Year": 2024},
+        {"Name": "ALC (India)", "Programme": ["Big Ticket / बिग टिकट"], "State": "Telangana", "Latitude": 17.3850, "Longitude": 78.4867, "Year": 2024},
+        {"Name": "Kashish Foundation", "Programme": ["Big Ticket / बिग टिकट"], "State": "Bihar", "Latitude": 25.5941, "Longitude": 85.1376, "Year": 2024},
+        {"Name": "Astitva Foundation", "Programme": ["Big Ticket / बिग टिकट"], "State": "Gujarat", "Latitude": 23.0225, "Longitude": 72.5714, "Year": 2024},
+        {"Name": "Neev", "Programme": ["Big Ticket / बिग टिकट"], "State": "Uttarakhand", "Latitude": 30.3165, "Longitude": 78.0322, "Year": 2024},
+        {"Name": "Prantakatha", "Programme": ["Ocean in a Drop / ओशन इन अ ड्रॉप"], "State": "West Bengal", "Latitude": 22.5726, "Longitude": 88.3639, "Year": 2024},
+        {"Name": "Reap Benefit", "Programme": ["Ocean in a Drop / ओशन इन अ ड्रॉप"], "State": "Karnataka", "Latitude": 12.9716, "Longitude": 77.5946, "Year": 2024},
+        {"Name": "People for Change", "Programme": ["Ocean in a Drop / ओशन इन अ ड्रॉप"], "State": "Jharkhand", "Latitude": 22.8046, "Longitude": 86.2029, "Year": 2024},
+        {"Name": "Kizazi", "Programme": ["Ocean in a Drop / ओशन इन अ ड्रॉप"], "State": "International/Delhi", "Latitude": 28.5355, "Longitude": 77.3910, "Year": 2024},
+        {"Name": "Northeast Educational Trust", "Programme": ["Ocean in a Drop / ओशन इन अ ड्रॉप"], "State": "Assam", "Latitude": 26.1445, "Longitude": 91.7362, "Year": 2024},
+        {"Name": "Wayve Foundation", "Programme": ["Ocean in a Drop / ओशन इन अ ड्रॉप"], "State": "Maharashtra", "Latitude": 18.5204, "Longitude": 73.8567, "Year": 2024}
     ];
 
-    let currentMarkers = [];
+    let markerLayer = L.layerGroup().addTo(map);
 
     function renderMarkers(data) {
-        // Clear old markers
-        currentMarkers.forEach(m => m.remove());
-        currentMarkers = [];
+        markerLayer.clearLayers();
 
         data.forEach(item => {
-            const el = document.createElement('div');
-            el.className = 'marker';
+            const marker = L.circleMarker([item.Latitude, item.Longitude], {
+                radius: 8,
+                fillColor: "#e67e22",
+                color: "#fff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.9
+            });
 
-            const popup = new mapboxgl.Popup({ offset: 25 })
-                .setHTML(`
-                    <h3>${item.Name}</h3>
-                    <p><strong>State:</strong> ${item.State}</p>
-                    <p><strong>Programme:</strong> ${item.Programme[0]}</p>
-                    <p><strong>Year:</strong> ${item.Year}</p>
-                `);
+            marker.bindPopup(`
+                <div style="font-family: sans-serif;">
+                    <h3 class="popup-title">${item.Name}</h3>
+                    <hr style="border:0; border-top:1px solid #eee; margin: 8px 0;">
+                    <b>State:</b> ${item.State}<br>
+                    <b>Programme:</b> ${item.Programme[0]}<br>
+                    <b>Year:</b> ${item.Year}
+                </div>
+            `);
 
-            const marker = new mapboxgl.Marker(el)
-                .setLngLat([item.Longitude, item.Latitude])
-                .setPopup(popup)
-                .addTo(map);
-            
-            currentMarkers.push(marker);
+            markerLayer.addLayer(marker);
         });
 
-        document.getElementById('counter').innerText = `Showing ${data.length} organizations`;
+        document.getElementById('counter').innerText = `Showing ${data.length} Organizations`;
     }
 
     function filterData() {
-        const year = document.getElementById('yearFilter').value;
-        const prog = document.getElementById('progFilter').value;
+        const selectedYear = document.getElementById('yearFilter').value;
+        const selectedProg = document.getElementById('progFilter').value;
 
         const filtered = alumni.filter(item => {
-            const matchesYear = year === 'all' || item.Year.toString() === year;
-            const matchesProg = prog === 'all' || item.Programme[0].includes(prog);
+            const matchesYear = selectedYear === 'all' || item.Year.toString() === selectedYear;
+            const matchesProg = selectedProg === 'all' || item.Programme[0].includes(selectedProg);
             return matchesYear && matchesProg;
         });
 
         renderMarkers(filtered);
     }
 
-    map.on('load', () => {
-        renderMarkers(alumni);
-    });
+    // Initial Load
+    renderMarkers(alumni);
 </script>
 
 </body>
