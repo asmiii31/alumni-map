@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Pravah Alumni Map</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; display: flex; font-family: sans-serif; }
+        #sidebar { width: 300px; height: 100vh; padding: 20px; background: #f8f9fa; border-right: 1px solid #ddd; overflow-y: auto; }
+        #map { flex-grow: 1; height: 100vh; }
+        select { width: 100%; padding: 10px; margin-bottom: 20px; }
+        .marker { background-color: #f37021; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>Pravah Alumni</h2>
+    <label>Filter by Year:</label>
+    <select id="yearFilter" onchange="filterData()">
+        <option value="all">All Years</option>
+        <option value="2023">2023</option>
+        <option value="2024">2024</option>
+    </select>
+    
+    <label>Filter by Program:</label>
+    <select id="programFilter" onchange="filterData()">
+        <option value="all">All Programs</option>
+        <option value="SMILE">SMILE</option>
+        <option value="Global Citizen">Global Citizen</option>
+    </select>
+</div>
+
+<div id="map"></div>
+
+<script>
+    // 2. PASTE YOUR MAPBOX TOKEN HERE
+    mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/light-v11', // You can change this to your custom style URL
+        center: [78.9629, 20.5937], // Centers on India
+        zoom: 4
+    });
+
+    // 3. YOUR DATABASE (Replace these examples with your SharePoint data)
+    const alumni = [
+        { name: "Amit", year: "2023", program: "SMILE", lat: 26.9124, lng: 75.7873 },
+        { name: "Priya", year: "2024", program: "Global Citizen", lat: 28.6139, lng: 77.2090 }
+    ];
+
+    let markers = [];
+
+    function renderMarkers(data) {
+        // Clear old markers
+        markers.forEach(m => m.remove());
+        markers = [];
+
+        data.forEach(person => {
+            const el = document.createElement('div');
+            el.className = 'marker';
+
+            const marker = new mapboxgl.Marker(el)
+                .setLngLat([person.lng, person.lat])
+                .setPopup(new mapboxgl.Popup().setHTML(`<h3>${person.name}</h3><p>${person.program} (${person.year})</p>`))
+                .addTo(map);
+            
+            markers.push(marker);
+        });
+    }
+
+    function filterData() {
+        const year = document.getElementById('yearFilter').value;
+        const program = document.getElementById('programFilter').value;
+
+        const filtered = alumni.filter(p => {
+            return (year === 'all' || p.year === year) && 
+                   (program === 'all' || p.program === program);
+        });
+        renderMarkers(filtered);
+    }
+
+    map.on('load', () => renderMarkers(alumni));
+</script>
+
+</body>
+</html>
